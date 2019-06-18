@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  DocumentTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: documents
+      PrimaryKey:
+        Name: refId
+        Type: String
+  Ships:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      CodeUri: ./api
+      Handler: ships.event_handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref DocumentTable
+      Policies:
+        - AmazonDynamoDBFullAccess
+        - AWSLambdaExecute
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:GetObjectACL
+              Resource: 'arn:aws:s3:::ais-sage-vessels/*'
+        - S3FullAccessPolicy:
+            BucketName: !Ref DocumentTable
+      Events:
+        FileUpload:
+          Type: S3
+          Properties:
+            Bucket: !Ref SrcBucket
+            Events: s3:ObjectCreated:*
+        FindExactShip:
+          Type: Api
+          Properties:
+            Path: /ships
+            Method: post
+      Timeout: 12
+  SrcBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ais-sage-vessels
+Globals:
+  Api:
+    Cors:
+      AllowMethods: "'*'"
+      AllowHeaders: "'*'"
+      AllowOrigin: "'*'"

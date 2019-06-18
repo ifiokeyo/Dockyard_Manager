@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Globals:
+  Api:
+    Cors:
+      AllowHeaders: '''*'''
+      AllowMethods: '''*'''
+      AllowOrigin: '''*'''
+Resources:
+  DocumentTable:
+    Properties:
+      PrimaryKey:
+        Name: refId
+        Type: String
+      TableName: documents
+    Type: AWS::Serverless::SimpleTable
+  Ships:
+    Properties:
+      CodeUri: s3://artifacts-for-ais-api/05162933919b00f7d519208f2a574b0d
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: DocumentTable
+      Events:
+        FileUpload:
+          Properties:
+            Bucket:
+              Ref: SrcBucket
+            Events: s3:ObjectCreated:*
+          Type: S3
+        FindExactShip:
+          Properties:
+            Method: post
+            Path: /ships
+          Type: Api
+      Handler: ships.event_handler
+      Policies:
+      - AmazonDynamoDBFullAccess
+      - AWSLambdaExecute
+      - Statement:
+        - Action:
+          - s3:GetObject
+          - s3:GetObjectACL
+          Effect: Allow
+          Resource: arn:aws:s3:::ais-sage-vessels/*
+        Version: '2012-10-17'
+      - S3FullAccessPolicy:
+          BucketName:
+            Ref: DocumentTable
+      Runtime: python3.7
+      Timeout: 12
+    Type: AWS::Serverless::Function
+  SrcBucket:
+    Properties:
+      BucketName: ais-sage-vessels
+    Type: AWS::S3::Bucket
+Transform: AWS::Serverless-2016-10-31
